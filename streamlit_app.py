@@ -11,7 +11,7 @@ st.caption("Envie vários arquivos .xlsx ou arraste uma paste, aplique pré-proc
 st.sidebar.header("⚙️ Opções")
 skiprows = st.sidebar.number_input("Linhas a pular no início", min_value=0, value=9, step=1)
 skipcols_left = st.sidebar.number_input("Colunas a remover (esquerda → direita)", min_value=0, value=0, step=1)
-remover_unnamed = st.sidebar.checkbox("Remover colunas 'Unnamed:*'", value=True)
+
 adicionar_coluna = st.sidebar.checkbox("Adicionar coluna fixa", value=False)
 if adicionar_coluna:
     nome_col = st.sidebar.text_input("Nome da coluna", value="Homem Aranha")
@@ -21,37 +21,32 @@ if adicionar_coluna:
 up_files = st.file_uploader("Selecione um ou mais .xlsx", type=["xlsx"], accept_multiple_files=True)
 
 # -------------------- Utils --------------------
-def limpar_unnamed(df: pd.DataFrame) -> pd.DataFrame:
-    return df.loc[:, ~df.columns.astype(str).str.startswith("Unnamed")]
-
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=True)
 def ler_xlsx(file, skiprows: int, skipcols_left: int,
-             remover_unnamed_flag: bool, add_col: bool, nome_coluna: str, valor_coluna: str):
+             add_col: bool, nome_coluna: str, valor_coluna: str):
     df = pd.read_excel(file, skiprows=skiprows, engine="openpyxl")
 
+    # Remover N primeiras colunas (da esquerda para a direita)
     if skipcols_left > 0:
         n = min(skipcols_left, df.shape[1])
         df = df.iloc[:, n:]
 
-    if remover_unnamed_flag:
-        df = limpar_unnamed(df)
-
+    # Adicionar coluna fixa (se marcado)
     if add_col and nome_coluna:
         df.insert(0, nome_coluna, valor_coluna)
 
+    # Adiciona origem do arquivo
     df.insert(0, "arquivoOrigem", file.name)
     return df
 
 def baixar_excel(df: pd.DataFrame, sheet_name: str = "dados") -> bytes:
-    # Gera um .xlsx com "autofit" simples de largura de colunas
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine="xlsxwriter", datetime_format="yyyy-mm-dd hh:mm:ss") as writer:
         df.to_excel(writer, index=False, sheet_name=sheet_name)
         ws = writer.sheets[sheet_name]
-        # Autoajuste básico das colunas (limite de 50)
         for idx, col in enumerate(df.columns):
             serie = df[col].astype(str)
-            max_len = max([len(col)] + [len(s) for s in serie.head(1000)])  # amostra p/ performance
+            max_len = max([len(col)] + [len(s) for s in serie.head(1000)])
             ws.set_column(idx, idx, min(max_len + 2, 50))
     buffer.seek(0)
     return buffer.read()
@@ -69,7 +64,6 @@ if st.button("Concatenar"):
                 f,
                 skiprows,
                 skipcols_left,
-                remover_unnamed,
                 adicionar_coluna,
                 nome_col if adicionar_coluna else "",
                 valor_col if adicionar_coluna else ""
@@ -84,7 +78,6 @@ if st.button("Concatenar"):
             st.write("### 🔎 Preview")
             st.dataframe(df_final.head(100), use_container_width=True)
 
-            # ✅ Exporta apenas Excel (nada de CSV com .xlsx)
             st.download_button(
                 "⬇️ Baixar Excel",
                 data=baixar_excel(df_final),
@@ -93,13 +86,13 @@ if st.button("Concatenar"):
             )
         else:
             st.info("Nenhum DataFrame processado.")
-            
+
 # -------------------- Dicas --------------------
 with st.expander("💡 Suporte"):
-     st.markdown(
-"""
+    st.markdown(
+        """
 - Carlos Massato Horibe Chinen 👨‍💻  
-- Guilherme Amato 👨‍💼
+- Guilherme Amato 👨‍💼  
 - Maura Chagas 👩‍💻
 """
-)
+    )
