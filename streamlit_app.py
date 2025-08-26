@@ -89,8 +89,8 @@ if st.button("Concatenar"):
 
 # -------------------- Dicas --------------------
 with st.expander("💡 Suporte"):
-    st.markdown(
-        """
+     st.markdown(
+"""
 - Carlos Massato Horibe Chinen 👨‍💻  
 - Guilherme Amato 👨‍💼  
 - Maura Chagas 👩‍💻
